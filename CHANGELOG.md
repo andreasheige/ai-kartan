@@ -2,6 +2,10 @@
 
 Kodens och funktionernas historik. Dataändringar loggas separat och automatiskt i `history/changelog.json` och på sajten under Ändringar. Samma rader som här finns maskinläsbart i `history/bygglogg.json`.
 
+## 2026-11-05
+
+- Platserna utöver sätet syns på kartan. Varje plats ritas som en kontur på kommunnivå, i kommunens rutnät som alla andra utan adress, och öppnar organisationen. En organisation är med i varje kommun och varje län där den har sätet eller en plats: i kartans grupper, i filtren och sökningen, på kommun- och länssidorna, på länskartan och i Fråga kartan. Den räknas en gång i totalen och en gång per kommun och län, så ett bolag med två kontor i samma län ser inte ut som två. Detaljpanelen visar Även i. Exporterna har en punkt och en rad per organisation som förut, med platserna i attributet `platser` i GeoJSON och kolumnen `platser_kommun_kod` sist i CSV. Andra delen av ärende #75.
+
 ## 2026-11-02
 
 - En organisation kan ha platser utöver sätet. Det nya fältet `platser` är en lista där varje plats är en uppgift med källa, datum och status, som alla andra fält, och anger bara en kommunkod. Egen webbplats ger egen uppgift, och ett register som listar arbetsställen kan ge bekräftad. Valideringen stoppar en kod som inte finns, sätets egen kommun och samma kommun två gånger. Platserna listas på organisationens sida. Kartan, kommun- och länssidorna och filtren visar än så länge bara sätet. Metoden, Personuppgifter, schemat och mallen säger den nya regeln. Knowit är första posten med platser. Förslaget kom i ärende #75.
