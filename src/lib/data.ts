@@ -59,7 +59,19 @@ export interface OrgData {
   record_updated_at: string;
 }
 
+/** En plats utöver sätet, härledd ur `platser`. Positionen är en ruta i kommunens rutnät, aldrig en adress. */
+export interface AnnanPlats {
+  kommun_kod: string;
+  kommun_namn: string;
+  kommun_slug: string;
+  lan_kod: string;
+  lan_namn: string | null;
+  lan_slug: string | null;
+  position: { lat: number; lng: number };
+}
+
 export interface Harlett {
+  platser: AnnanPlats[];
   kommun_namn: string | null;
   kommun_slug: string | null;
   lan_kod: string | null;
@@ -198,12 +210,13 @@ export function hamtaData(): Dataset {
 
   const perKommun = new Map<string, Org[]>();
   const perLan = new Map<string, Org[]>();
+  // En organisation är med i varje kommun och varje län där den har sätet eller en plats, en gång per ställe.
   for (const o of organisationer) {
-    const k = o.kommun?.value;
-    if (k) {
+    for (const k of kommunkoder(o)) {
       if (!perKommun.has(k)) perKommun.set(k, []);
       perKommun.get(k)!.push(o);
-      const l = k.slice(0, 2);
+    }
+    for (const l of lankoder(o)) {
       if (!perLan.has(l)) perLan.set(l, []);
       perLan.get(l)!.push(o);
     }
@@ -262,7 +275,7 @@ export function hamtaData(): Dataset {
       per_typ: rakna((o) => [o.type.value]),
       per_erbjuder: rakna((o) => o.offers.value),
       per_omrade: rakna((o) => o.areas.value),
-      per_lan: rakna((o) => (o.h.lan_kod ? [o.h.lan_kod] : [])),
+      per_lan: rakna(lankoder),
       med_bekraftat: medBekraftat,
       andel_med_bekraftat: organisationer.length ? Math.round((medBekraftat / organisationer.length) * 1000) / 10 : 0,
       fakta_per_status: faktaPerStatus,
@@ -274,6 +287,16 @@ export function hamtaData(): Dataset {
     byggd: new Date().toISOString().slice(0, 10),
   };
   return cache;
+}
+
+/** Kommunerna där organisationen finns: sätet först, sedan platserna. Varje kod en gång. */
+export function kommunkoder(o: Org): string[] {
+  return [...new Set([o.kommun?.value, ...o.h.platser.map((p) => p.kommun_kod)].filter((k): k is string => !!k))];
+}
+
+/** Länen där organisationen finns, varje län en gång. */
+export function lankoder(o: Org): string[] {
+  return [...new Set(kommunkoder(o).map((k) => k.slice(0, 2)))];
 }
 
 /** Fälten i den ordning de visas på organisationssidan, med svenska etiketter. */
@@ -447,6 +470,8 @@ export function tillKartpost(o: Org) {
     lat: o.h.position?.lat ?? null,
     lng: o.h.position?.lng ?? null,
     pt: o.h.position_typ,
+    // Platserna utöver sätet: kommun, län och en ruta i kommunens rutnät.
+    p: o.h.platser.map((p) => ({ k: p.kommun_kod, kn: p.kommun_namn, l: p.lan_kod, ln: p.lan_namn, lat: p.position.lat, lng: p.position.lng })),
     d: o.description.value,
     s: o.h.senast_verifierad,
     c: o.h.antal_bekraftade,
