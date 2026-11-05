@@ -133,6 +133,7 @@ function kontrolleraPost(post) {
   if (kommunKod && !geo) w('kommun: geodata saknas lokalt, koden kunde inte kontrolleras.');
   const platsKoder = new Set();
   (Array.isArray(data.platser) ? data.platser : []).forEach((p, i) => {
+    if (p && typeof p === 'object' && !p.source_url) e(`platser[${i}]: källa saknas. Varje plats ska ha en egen source_url som visar orten.`);
     const kod = p?.value?.kommun;
     if (typeof kod !== 'string') return;
     if (geo && !geo.kommunPerKod.has(kod)) e(`platser[${i}]: koden "${kod}" finns inte i data/geo/kommuner.json.`);

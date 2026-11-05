@@ -191,6 +191,7 @@ test('en plats med okänd kommunkod, sätets kommun eller samma kommun två gån
     [[plats('9999')], /platser\[0\]: koden "9999" finns inte/],
     [[plats('0180')], /platser\[0\]: "0180" är sätets kommun/],
     [[plats('1480'), plats('1480')], /platser\[1\]: "1480" står redan i platser/],
+    [[plats('1480', { source_url: undefined })], /platser\[0\]: källa saknas/],
   ];
   for (const [platser, monster] of fall) {
     const r = validera([post('ett', 'https://ett.example', (p) => (p.platser = platser))]);
