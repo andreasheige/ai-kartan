@@ -25,7 +25,7 @@ export const GET: APIRoute = () => {
           lan_kod: o.h.lan_kod,
           lan: o.h.lan_namn,
           // Platser utöver sätet. Punkten är fortfarande sätet, en per organisation.
-          platser: o.h.platser.map((p) => ({ kommun_kod: p.kommun_kod, kommun: p.kommun_namn, lan_kod: p.lan_kod, lan: p.lan_namn })),
+          platser: o.h.platser.map((p) => ({ kommun_kod: p.kommun_kod, kommun: p.kommun_namn, lan_kod: p.lan_kod, lan: p.lan_namn, belagd: p.belagd })),
           website: o.website,
           url: absolutUrl(`/organisation/${o.id}`),
           position_typ: o.h.position_typ,

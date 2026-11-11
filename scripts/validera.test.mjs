@@ -200,6 +200,28 @@ test('en plats med okänd kommunkod, sätets kommun eller samma kommun två gån
   }
 });
 
+test('ett belägg kan gälla flera platser, men bara platser som står i platser', () => {
+  // Samma case på två kontor, och sätet får också stå med.
+  let r = validera([post('ett', 'https://ett.example', (p) => {
+    p.platser = [plats('1480'), plats('1280')];
+    p.evidence[0].platser = ['1480', '1280', '0180'];
+  })]);
+  assert.equal(r.kod, 0, r.text);
+  // En kommun som inte står i platser stoppas.
+  r = validera([post('ett', 'https://ett.example', (p) => {
+    p.platser = [plats('1480')];
+    p.evidence[0].platser = ['1280'];
+  })]);
+  assert.notEqual(r.kod, 0);
+  assert.match(r.text, /anger platsen "1280", som inte står i platser/);
+  // Kommunkoden måste vara fyra siffror.
+  r = validera([post('ett', 'https://ett.example', (p) => {
+    p.platser = [plats('1480')];
+    p.evidence[0].platser = ['148'];
+  })]);
+  assert.notEqual(r.kod, 0);
+});
+
 test('en plats följer samma regler som andra uppgifter', () => {
   // Egen webbplats ger högst claimed.
   let r = validera([post('ett', 'https://ett.example', (p) => (p.platser = [plats('1480', { status: 'confirmed' })]))]);

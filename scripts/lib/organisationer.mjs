@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
-import { platsnyckel } from './landplatser.mjs';
+import { belagdaPlatser, platsnyckel } from './landplatser.mjs';
 
 /** Projektroten: katalogen som innehåller data/taxonomi. Fungerar både från scripts/ och från Astros byggkatalog. */
 function hittaRot() {
@@ -152,22 +152,26 @@ export function forskjutning(id, lat, maxMeter = 1800) {
 }
 
 /**
- * Platserna utöver sätet, med kommun, län och en position i kommunens rutnät. Positionen är aldrig
- * en adress. En kod som inte finns i geodatan hoppas över; valideringen stoppar den ändå.
+ * Platserna utöver sätet, med kommun och län. `belagd` säger om ett belägg visar AI-arbete på orten.
+ * Bara en belagd plats får en position, en ruta i kommunens rutnät och aldrig en adress. En kod som
+ * inte finns i geodatan hoppas över; valideringen stoppar den ändå.
  */
 function andraPlatser(data, geo, platser) {
   if (!geo || !Array.isArray(data.platser)) return [];
+  const belagda = belagdaPlatser(data);
   return data.platser.flatMap((p) => {
     const kod = p?.value?.kommun;
     const kommun = kod ? geo.kommunPerKod.get(kod) : null;
     if (!kommun) return [];
     const lan = geo.lanPerKod.get(kod.slice(0, 2)) ?? null;
+    const plats = { kommun_kod: kod, kommun_namn: kommun.namn, kommun_slug: kommun.slug, lan_kod: kod.slice(0, 2), lan_namn: lan?.namn ?? null, lan_slug: lan?.slug ?? null };
+    if (!belagda.has(kod)) return [{ ...plats, belagd: false, position: null }];
     let position = platser?.get(platsnyckel(data.id, kod)) ?? null;
     if (!position) {
       const { dLat, dLng } = forskjutning(platsnyckel(data.id, kod), kommun.lat);
       position = { lat: +(kommun.lat + dLat).toFixed(5), lng: +(kommun.lng + dLng).toFixed(5) };
     }
-    return [{ kommun_kod: kod, kommun_namn: kommun.namn, kommun_slug: kommun.slug, lan_kod: kod.slice(0, 2), lan_namn: lan?.namn ?? null, lan_slug: lan?.slug ?? null, position: { lat: position.lat, lng: position.lng } }];
+    return [{ ...plats, belagd: true, position: { lat: position.lat, lng: position.lng } }];
   });
 }
 

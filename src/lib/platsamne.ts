@@ -50,6 +50,7 @@ interface Amnespost {
   areas: { value: string[] };
   kommun?: { value?: string | null } | null;
   platser?: { value: { kommun: string } }[];
+  evidence?: { platser?: string[] }[];
 }
 
 interface Amnesplats<T> {
@@ -59,11 +60,12 @@ interface Amnesplats<T> {
   organisationer: T[];
 }
 
-/** Kommunen där organisationen finns i länet: sätet om det ligger där, annars första platsen där. */
+/** Kommunen där organisationen finns i länet: sätet om det ligger där, annars första platsen med belägg där. */
 function kommunILanet(o: Amnespost, lan: string | undefined): string | null | undefined {
   const sate = o.kommun?.value;
   if (!lan || sate?.startsWith(lan)) return sate;
-  return o.platser?.find((p) => p.value.kommun.startsWith(lan))?.value.kommun ?? sate;
+  const belagda = new Set(o.evidence?.flatMap((b) => b.platser ?? []));
+  return o.platser?.find((p) => p.value.kommun.startsWith(lan) && belagda.has(p.value.kommun))?.value.kommun ?? sate;
 }
 
 export interface Platsamne<P, T> {

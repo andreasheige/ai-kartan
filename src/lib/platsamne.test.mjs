@@ -49,12 +49,14 @@ test('ett län hoppas över när alla i området har säte i samma kommun', () =
   assert.equal(platsamnen([spridda]).length, 1);
 });
 
-test('i ett län räknas en organisation till kommunen där den har en plats, inte till sätet utanför', () => {
-  const kontor = { ...post('0180', 'halsa'), platser: [{ value: { kommun: '0380' } }] };
+test('i ett län räknas en organisation till kommunen där den har en plats med belägg, inte till sätet utanför', () => {
+  const kontor = { ...post('0180', 'halsa'), platser: [{ value: { kommun: '0380' } }], evidence: [{ platser: ['0380'] }] };
   const lan = { typ: 'lan', kod: '03', organisationer: [...flera(5, '0380', 'halsa'), kontor] };
   assert.equal(platsamnen([lan]).length, 0);
   // Utan länets kod gäller sätet, som förut.
   assert.equal(platsamnen([{ ...lan, kod: undefined }]).length, 1);
+  // Utan belägg på platsen gäller sätet.
+  assert.equal(platsamnen([{ ...lan, organisationer: [...flera(5, '0380', 'halsa'), { ...kontor, evidence: [] }] }]).length, 1);
 });
 
 test('alla namn står i meningen, eller inga: aldrig ett urval', () => {

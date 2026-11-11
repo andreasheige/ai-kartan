@@ -108,10 +108,22 @@ export function platsnyckel(id, kod) {
 }
 
 /**
+ * Kommunkoderna där organisationen har ett belägg för AI-arbete, ur `evidence[].platser`. Bara en
+ * plats med belägg får en egen prick och räknas på orten. Övriga platser står som text.
+ */
+export function belagdaPlatser(data) {
+  const ut = new Set();
+  for (const b of Array.isArray(data?.evidence) ? data.evidence : []) {
+    for (const kod of Array.isArray(b?.platser) ? b.platser : []) ut.add(kod);
+  }
+  return ut;
+}
+
+/**
  * Plats på land för varje organisation som ritas på kommunnivå: Map från id till { lat, lng }.
  * Organisationer med egna koordinater, utan känd kommun eller i en kommun utan rad i land.json
- * får ingen plats här. Varje plats utöver sätet får en egen ruta i sin kommun, under
- * `platsnyckel(id, kod)`, och delar inte ruta med någon annan.
+ * får ingen plats här. Varje plats utöver sätet med belägg får en egen ruta i sin kommun, under
+ * `platsnyckel(id, kod)`, och delar inte ruta med någon annan. En plats utan belägg får ingen ruta.
  */
 export function platserPaLand(poster, geo) {
   const perKommun = new Map();
@@ -121,7 +133,10 @@ export function platserPaLand(poster, geo) {
   };
   for (const data of poster) {
     if (!data?.coordinates?.value) lagg(data?.kommun?.value, data?.id);
-    for (const p of Array.isArray(data?.platser) ? data.platser : []) lagg(p?.value?.kommun, platsnyckel(data.id, p?.value?.kommun));
+    const belagda = belagdaPlatser(data);
+    for (const p of Array.isArray(data?.platser) ? data.platser : []) {
+      if (belagda.has(p?.value?.kommun)) lagg(p.value.kommun, platsnyckel(data.id, p.value.kommun));
+    }
   }
   const ut = new Map();
   for (const [kod, ids] of perKommun) {

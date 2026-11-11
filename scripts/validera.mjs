@@ -151,6 +151,9 @@ function kontrolleraPost(post) {
     if (belaggsUrler.has(b.url)) w(`evidence: samma länk två gånger: ${b.url}`);
     belaggsUrler.add(b.url);
     if (b.verified_at && b.verified_at > IDAG) e(`evidence: verified_at ${b.verified_at} ligger i framtiden.`);
+    for (const kod of Array.isArray(b.platser) ? b.platser : []) {
+      if (kod !== kommunKod && !platsKoder.has(kod)) e(`evidence: ${b.url} anger platsen "${kod}", som inte står i platser. Lägg till platsen med egen källa först.`);
+    }
   }
   const felSort = provaBelaggstyp(data, tax);
   if (felSort) w(felSort);

@@ -101,6 +101,8 @@ evidence:                  # Minst ett belägg: en publik länk till något ni b
     title: Öppen svensk språkmodell
     status: claimed
     verified_at: 2026-10-04
+    # platser: ["1480"]    # Valfritt: kommunkoder i platser där länken visar AI-arbete. Bara då
+                           # får platsen en prick och räknas på orten. Länken ska själv nämna orten.
 
 links:
   github: https://github.com/exempelbolaget

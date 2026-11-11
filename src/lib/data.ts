@@ -35,6 +35,8 @@ export interface Belagg {
   verified_at: string;
   verified_by?: string;
   note?: string;
+  /** Kommunkoder för platserna där belägget visar AI-arbete. */
+  platser?: string[];
 }
 
 export interface OrgData {
@@ -59,7 +61,10 @@ export interface OrgData {
   record_updated_at: string;
 }
 
-/** En plats utöver sätet, härledd ur `platser`. Positionen är en ruta i kommunens rutnät, aldrig en adress. */
+/**
+ * En plats utöver sätet, härledd ur `platser`. `belagd` säger om ett belägg visar AI-arbete på orten.
+ * Bara en belagd plats har en position, en ruta i kommunens rutnät och aldrig en adress.
+ */
 export interface AnnanPlats {
   kommun_kod: string;
   kommun_namn: string;
@@ -67,7 +72,8 @@ export interface AnnanPlats {
   lan_kod: string;
   lan_namn: string | null;
   lan_slug: string | null;
-  position: { lat: number; lng: number };
+  belagd: boolean;
+  position: { lat: number; lng: number } | null;
 }
 
 export interface Harlett {
@@ -152,6 +158,8 @@ export interface Plats {
   lat: number;
   lng: number;
   organisationer: Org[];
+  /** Organisationer med kontor här utan belägg för AI-arbete på orten. Står som text, räknas inte. */
+  kontor: Org[];
   lan_kod?: string;
   lan_namn?: string;
   lan_slug?: string;
@@ -210,16 +218,19 @@ export function hamtaData(): Dataset {
 
   const perKommun = new Map<string, Org[]>();
   const perLan = new Map<string, Org[]>();
-  // En organisation är med i varje kommun och varje län där den har sätet eller en plats, en gång per ställe.
+  const kontorPerKommun = new Map<string, Org[]>();
+  const kontorPerLan = new Map<string, Org[]>();
+  const lagg = (m: Map<string, Org[]>, kod: string, o: Org) => m.set(kod, [...(m.get(kod) ?? []), o]);
+  // En organisation är med i varje kommun och varje län där den har sätet eller en plats med belägg,
+  // en gång per ställe. Ett kontor utan belägg står bara som text, där organisationen inte redan är med.
   for (const o of organisationer) {
-    for (const k of kommunkoder(o)) {
-      if (!perKommun.has(k)) perKommun.set(k, []);
-      perKommun.get(k)!.push(o);
-    }
-    for (const l of lankoder(o)) {
-      if (!perLan.has(l)) perLan.set(l, []);
-      perLan.get(l)!.push(o);
-    }
+    const kommunerna = kommunkoder(o);
+    const lanen = lankoder(o);
+    for (const k of kommunerna) lagg(perKommun, k, o);
+    for (const l of lanen) lagg(perLan, l, o);
+    const kontor = o.h.platser.filter((p) => !p.belagd);
+    for (const k of new Set(kontor.map((p) => p.kommun_kod))) if (!kommunerna.includes(k)) lagg(kontorPerKommun, k, o);
+    for (const l of new Set(kontor.map((p) => p.lan_kod))) if (!lanen.includes(l)) lagg(kontorPerLan, l, o);
   }
   const platser = {
     kommuner: kommuner
@@ -235,11 +246,12 @@ export function hamtaData(): Dataset {
         lan_namn: k.lan_namn,
         lan_slug: lan.find((l) => l.kod === k.lan_kod)?.slug,
         organisationer: perKommun.get(k.kod)!,
+        kontor: kontorPerKommun.get(k.kod) ?? [],
       }))
       .sort((a, b) => b.organisationer.length - a.organisationer.length || jamfor.compare(a.namn, b.namn)),
     lan: lan
       .filter((l) => perLan.has(l.kod))
-      .map<Plats>((l) => ({ typ: 'lan', kod: l.kod, namn: l.namn, slug: l.slug, lat: l.lat, lng: l.lng, organisationer: perLan.get(l.kod)! }))
+      .map<Plats>((l) => ({ typ: 'lan', kod: l.kod, namn: l.namn, slug: l.slug, lat: l.lat, lng: l.lng, organisationer: perLan.get(l.kod)!, kontor: kontorPerLan.get(l.kod) ?? [] }))
       .sort((a, b) => b.organisationer.length - a.organisationer.length || jamfor.compare(a.namn, b.namn)),
   };
 
@@ -289,9 +301,9 @@ export function hamtaData(): Dataset {
   return cache;
 }
 
-/** Kommunerna där organisationen finns: sätet först, sedan platserna. Varje kod en gång. */
+/** Kommunerna där organisationen räknas: sätet först, sedan platserna med belägg. Varje kod en gång. */
 export function kommunkoder(o: Org): string[] {
-  return [...new Set([o.kommun?.value, ...o.h.platser.map((p) => p.kommun_kod)].filter((k): k is string => !!k))];
+  return [...new Set([o.kommun?.value, ...o.h.platser.filter((p) => p.belagd).map((p) => p.kommun_kod)].filter((k): k is string => !!k))];
 }
 
 /** Länen där organisationen finns, varje län en gång. */
@@ -471,7 +483,7 @@ export function tillKartpost(o: Org) {
     lng: o.h.position?.lng ?? null,
     pt: o.h.position_typ,
     // Platserna utöver sätet: kommun, län och en ruta i kommunens rutnät.
-    p: o.h.platser.map((p) => ({ k: p.kommun_kod, kn: p.kommun_namn, l: p.lan_kod, ln: p.lan_namn, lat: p.position.lat, lng: p.position.lng })),
+    p: o.h.platser.flatMap((p) => (p.belagd && p.position ? [{ k: p.kommun_kod, kn: p.kommun_namn, l: p.lan_kod, ln: p.lan_namn, lat: p.position.lat, lng: p.position.lng }] : [])),
     d: o.description.value,
     s: o.h.senast_verifierad,
     c: o.h.antal_bekraftade,
